@@ -14,11 +14,13 @@ import python_socks
 from . import exceptions
 
 def _encode_cookie(o, key):
-    o["time"] = int(time.time()); # Add the cookie creation time
+    o["time"] = int(time.time()) # Add the cookie creation time
     iv = secrets.token_bytes(12)
-    key = AESGCM(key)
-    crypted = key.encrypt(iv, json.dumps(o), None)
-    return base64.b64encode(crypted).replace(b"+", b'@').replace(b"/", b'$').decode("utf-8")
+    key_bytes = key[:32] if len(key) >= 32 else key
+    aes = AESGCM(key_bytes)
+    payload = json.dumps(o).encode("utf-8")
+    crypted = aes.encrypt(iv, payload, None)
+    return base64.b64encode(iv + crypted).replace(b"+", b'@').replace(b"/", b'$').decode("utf-8")
 
 def _check_amt_password(p):
         return (len(p) > 7) and\
@@ -147,13 +149,11 @@ def _check_socket(f):
 
     @functools.wraps(f)
     async def wrapper(self, *args, **kwargs):
-        try:
-            await asyncio.wait_for(self.initialized.wait(), 10)
-            await _check_errs(self)
-            await asyncio.wait_for(self._socket_open.wait(), 10)
-        finally:
-            await _check_errs(self)
-            return await f(self, *args, **kwargs)
+        await asyncio.wait_for(self.initialized.wait(), 10)
+        await _check_errs(self)
+        await asyncio.wait_for(self._socket_open.wait(), 10)
+        await _check_errs(self)
+        return await f(self, *args, **kwargs)
     return wrapper
 
 def _process_websocket_exception(exc):

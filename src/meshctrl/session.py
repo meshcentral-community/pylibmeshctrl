@@ -85,7 +85,7 @@ class Session(object):
                 
             if len(ckey) != 80: 
                 raise ValueError("Invalid login key")
-            domainid = '',
+            domainid = ''
             username = 'admin'
             if (domain != None):
                 domainid = domain
@@ -191,7 +191,7 @@ class Session(object):
             # Can't process non-json data, don't even try
             try:
                 data = json.loads(message)
-            except SyntaxError:
+            except (json.JSONDecodeError, ValueError):
                 continue
             action = data.get("action", None)
             await self._eventer.emit("server_event", data)
